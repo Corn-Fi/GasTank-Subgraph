@@ -1,0 +1,42 @@
+specVersion: 0.0.5
+schema:
+  file: schema.graphql
+dataSources:
+  - kind: ethereum
+    name: undefined
+    network: matic
+    source:
+      address: "0xA7721E54dd41bceaB8d30B5590D861c396B32F2c"
+      abi: GasTank
+      startBlock: 28532836
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.5
+      language: wasm/assemblyscript
+      entities:
+        - Approved
+        - DepositGas
+        - OwnershipTransferred
+        - Paused
+        - Pay
+        - Unpaused
+        - WithdrawGas
+      abis:
+        - name: GasTank
+          file: undefined\abis\GasTank.json
+      eventHandlers:
+        - event: Approved(indexed address,indexed address,bool)
+          handler: handleApproved
+        - event: DepositGas(indexed address,uint256)
+          handler: handleDepositGas
+        - event: OwnershipTransferred(indexed address,indexed address)
+          handler: handleOwnershipTransferred
+        - event: Paused(address)
+          handler: handlePaused
+        - event: Pay(indexed address,indexed address,uint256)
+          handler: handlePay
+        - event: Unpaused(address)
+          handler: handleUnpaused
+        - event: WithdrawGas(indexed address,uint256)
+          handler: handleWithdrawGas
+      file: undefined\undefined.wasm
