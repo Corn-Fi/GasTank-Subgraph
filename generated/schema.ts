@@ -42,13 +42,13 @@ export class GasTank extends Entity {
     this.set("id", Value.fromString(value));
   }
 
-  get balance(): BigInt {
+  get balance(): BigDecimal {
     let value = this.get("balance");
-    return value!.toBigInt();
+    return value!.toBigDecimal();
   }
 
-  set balance(value: BigInt) {
-    this.set("balance", Value.fromBigInt(value));
+  set balance(value: BigDecimal) {
+    this.set("balance", Value.fromBigDecimal(value));
   }
 
   get paused(): boolean {
@@ -69,13 +69,13 @@ export class GasTank extends Entity {
     this.set("owner", Value.fromBytes(value));
   }
 
-  get feesCollected(): BigInt {
+  get feesCollected(): BigDecimal {
     let value = this.get("feesCollected");
-    return value!.toBigInt();
+    return value!.toBigDecimal();
   }
 
-  set feesCollected(value: BigInt) {
-    this.set("feesCollected", Value.fromBigInt(value));
+  set feesCollected(value: BigDecimal) {
+    this.set("feesCollected", Value.fromBigDecimal(value));
   }
 
   get payers(): Array<string> | null {
@@ -111,6 +111,15 @@ export class GasTank extends Entity {
       this.set("payees", Value.fromStringArray(<Array<string>>value));
     }
   }
+
+  get fee(): BigDecimal {
+    let value = this.get("fee");
+    return value!.toBigDecimal();
+  }
+
+  set fee(value: BigDecimal) {
+    this.set("fee", Value.fromBigDecimal(value));
+  }
 }
 
 export class Payer extends Entity {
@@ -144,22 +153,22 @@ export class Payer extends Entity {
     this.set("id", Value.fromString(value));
   }
 
-  get amountDeposited(): BigInt {
+  get amountDeposited(): BigDecimal {
     let value = this.get("amountDeposited");
-    return value!.toBigInt();
+    return value!.toBigDecimal();
   }
 
-  set amountDeposited(value: BigInt) {
-    this.set("amountDeposited", Value.fromBigInt(value));
+  set amountDeposited(value: BigDecimal) {
+    this.set("amountDeposited", Value.fromBigDecimal(value));
   }
 
-  get totalAmountSpent(): BigInt {
+  get totalAmountSpent(): BigDecimal {
     let value = this.get("totalAmountSpent");
-    return value!.toBigInt();
+    return value!.toBigDecimal();
   }
 
-  set totalAmountSpent(value: BigInt) {
-    this.set("totalAmountSpent", Value.fromBigInt(value));
+  set totalAmountSpent(value: BigDecimal) {
+    this.set("totalAmountSpent", Value.fromBigDecimal(value));
   }
 
   get gasTank(): string {
@@ -246,15 +255,6 @@ export class PayerPayee extends Entity {
   set approved(value: boolean) {
     this.set("approved", Value.fromBoolean(value));
   }
-
-  get totalAmountPaid(): BigInt {
-    let value = this.get("totalAmountPaid");
-    return value!.toBigInt();
-  }
-
-  set totalAmountPaid(value: BigInt) {
-    this.set("totalAmountPaid", Value.fromBigInt(value));
-  }
 }
 
 export class Payee extends Entity {
@@ -295,15 +295,6 @@ export class Payee extends Entity {
 
   set approved(value: boolean) {
     this.set("approved", Value.fromBoolean(value));
-  }
-
-  get totalAmountPaid(): BigInt {
-    let value = this.get("totalAmountPaid");
-    return value!.toBigInt();
-  }
-
-  set totalAmountPaid(value: BigInt) {
-    this.set("totalAmountPaid", Value.fromBigInt(value));
   }
 
   get gasTank(): string {

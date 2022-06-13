@@ -1,4 +1,4 @@
-import { Address, BigInt, dataSource } from "@graphprotocol/graph-ts"
+import { Address, BigDecimal, BigInt, dataSource } from "@graphprotocol/graph-ts"
 import {
   GasTank as GasTankContract,
   Approved,
@@ -11,57 +11,99 @@ import {
 } from "../generated/undefined/GasTank"
 import { GasTank, Payer, Payee, PayerPayee } from "../generated/schema"
 
+const ADDRESS_ZERO = Address.fromString('0x0000000000000000000000000000000000000000')
+const BIG_INT_ZERO = BigInt.fromI32(0)
+const BIG_DECIMAL_ZERO = BigDecimal.zero()
+const PRECISION = BigInt.fromI32(10).pow(18).toBigDecimal()
+
+
+export function fetchGasTankContract(): GasTankContract {
+  return GasTankContract.bind(dataSource.address())
+}
+
 
 export function getGasTank(): GasTank {
   let gastank = GasTank.load(dataSource.address().toHex())
   if(gastank === null) {
     gastank = new GasTank(dataSource.address().toHex())
     gastank.paused = false;
-    gastank.balance = BigInt.fromI32(0)
-    gastank.owner = Address.fromString('0x0000000000000000000000000000000000000000')
-    gastank.feesCollected = BigInt.fromI32(0)
+    gastank.balance = BIG_DECIMAL_ZERO
+    gastank.owner = ADDRESS_ZERO
+    gastank.feesCollected = BIG_DECIMAL_ZERO
+    gastank.fee = fetchGasTankContract().txFee().toBigDecimal().div(PRECISION)
     gastank.save()
   }
   return gastank as GasTank
 }
 
 export function getPayee(_payee: Address): Payee {
-  let payee = Payee.load(_payee.toHex())
+  let payee = Payee.load(_payee.toHexString())
   if(payee === null) {
-    payee = new Payee(_payee.toHex())
+    let gastank = getGasTank()
+
+    payee = new Payee(_payee.toHexString())
     payee.approved = false
-    payee.totalAmountPaid = BigInt.fromI32(0)
     payee.gasTank = getGasTank().id
     payee.save()
+
+    const gtPayees = gastank.payees
+    const payeeArray = [payee.id]
+    if(gtPayees === null) {
+      gastank.payees = payeeArray
+    }
+    else {
+      gastank.payees = gtPayees.concat(payeeArray)
+    }
+    gastank.save()
   }
   return payee as Payee
 }
 
 export function getPayer(_payer: Address): Payer {
-  let payer = Payer.load(_payer.toHex())
+  let payer = Payer.load(_payer.toHexString())
   if(payer === null) {
-    payer = new Payer(_payer.toHex())
-    payer.amountDeposited = BigInt.fromI32(0)
-    payer.totalAmountSpent = BigInt.fromI32(0)
-    payer.gasTank = getGasTank().id
+    let gastank = getGasTank()
+
+    payer = new Payer(_payer.toHexString())
+    payer.amountDeposited = BIG_DECIMAL_ZERO
+    payer.totalAmountSpent = BIG_DECIMAL_ZERO
+    payer.gasTank = gastank.id
     payer.save()
+
+    const gtPayers = gastank.payers
+    const payerArray = [payer.id]
+    if(gtPayers === null) {
+      gastank.payers = payerArray
+    }
+    else {
+      gastank.payers = gtPayers.concat(payerArray)
+    }
+    gastank.save()
   }
   return payer as Payer
 }
 
 export function getPayerPayee(_payer: Address, _payee: Address): PayerPayee {
-  const id = _payer.toHex().concat('-').concat(_payee.toHex())
+  const id = _payer.toHexString().concat('-').concat(_payee.toHexString())
   let payerPayee = PayerPayee.load(id)
 
-  // Entities only exist after they have been saved to the store;
-  // `null` checks allow to create entities on demand
   if (payerPayee === null) {
     payerPayee = new PayerPayee(id)
     payerPayee.payer = getPayer(_payer).id
     payerPayee.payee = getPayee(_payee).id
-    payerPayee.totalAmountPaid = BigInt.fromI32(0)
     payerPayee.approved = false
     payerPayee.save()
+
+    let payer = getPayer(_payer)
+    const payerPayees = payer.payees
+    const payeeArray = [payerPayee.id]
+    if(payerPayees === null) {
+      payer.payees = payeeArray
+    }
+    else {
+      payer.payees = payerPayees.concat(payeeArray)
+    }
+    payer.save()
   }
 
   return payerPayee as PayerPayee
@@ -79,21 +121,23 @@ export function handleApproved(event: Approved): void {
 
 export function handleDepositGas(event: DepositGas): void {
   let payer = getPayer(event.params.user)
-  payer.amountDeposited = payer.amountDeposited.plus(event.params.amount)
+  const depositAmount = event.params.amount.toBigDecimal().div(PRECISION)
+  payer.amountDeposited = payer.amountDeposited.plus(depositAmount)
   payer.save()
 
   let gastank = getGasTank()
-  gastank.balance = gastank.balance.plus(event.params.amount)
+  gastank.balance = gastank.balance.plus(depositAmount)
   gastank.save()
 }
 
 export function handleWithdrawGas(event: WithdrawGas): void {
   let payer = getPayer(event.params.user)
-  payer.amountDeposited = payer.amountDeposited.minus(event.params.amount)
+  const withdrawAmount = event.params.amount.toBigDecimal().div(PRECISION)
+  payer.amountDeposited = payer.amountDeposited.minus(withdrawAmount)
   payer.save()
 
   let gastank = getGasTank()
-  gastank.balance = gastank.balance.minus(event.params.amount)
+  gastank.balance = gastank.balance.minus(withdrawAmount)
   gastank.save()
 }
 
@@ -110,25 +154,19 @@ export function handlePaused(event: Paused): void {
 }
 
 export function handlePay(event: Pay): void {
-  const fee = BigInt.fromI64(10000000000000000)
-  const amountWithFee = event.params.amount.plus(fee)
+  let gastank = getGasTank()
+
+  const payAmount = event.params.amount.toBigDecimal().div(PRECISION)
+  const amountWithFee = payAmount.plus(gastank.fee)
+
+  gastank.balance = gastank.balance.minus(amountWithFee)
+  gastank.feesCollected = gastank.feesCollected.plus(gastank.fee)
+  gastank.save()
+
   let payer = getPayer(event.params.payer)
   payer.amountDeposited = payer.amountDeposited.minus(amountWithFee)
   payer.totalAmountSpent = payer.totalAmountSpent.plus(amountWithFee)
   payer.save()
-
-  let payee = getPayee(event.params.payee)
-  payee.totalAmountPaid = payee.totalAmountPaid.plus(event.params.amount)
-  payee.save()
-
-  let payerPayee = getPayerPayee(event.params.payer, event.transaction.from)
-  payerPayee.totalAmountPaid = payerPayee.totalAmountPaid.plus(event.params.amount)
-  payerPayee.save()
-
-  let gastank = getGasTank()
-  gastank.balance = gastank.balance.minus(amountWithFee)
-  gastank.feesCollected = gastank.feesCollected.plus(fee)
-  gastank.save()
 }
 
 export function handleUnpaused(event: Unpaused): void {

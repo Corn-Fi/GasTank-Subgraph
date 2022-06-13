@@ -1,19 +1,20 @@
 type GasTank @entity {
   id: ID!
-  balance: BigInt!
+  balance: BigDecimal!
   paused: Boolean!
   owner: Bytes!
-  feesCollected: BigInt!
-  payers: [Payer!] @derivedfrom(field: gasTank)
-  payees: [Payee!] @derivedfrom(field: gasTank)
+  feesCollected: BigDecimal!
+  payers: [Payer!]
+  payees: [Payee!]
+  fee: BigDecimal!
 }
 
 type Payer @entity {
   id: ID!
-  amountDeposited: BigInt!
-  totalAmountSpent: BigInt!
+  amountDeposited: BigDecimal!
+  totalAmountSpent: BigDecimal!
   gasTank: GasTank!
-  payees: [PayerPayee!] @derivedfrom(field: payer)
+  payees: [PayerPayee!]
 }
 
 type PayerPayee @entity {
@@ -21,12 +22,10 @@ type PayerPayee @entity {
   payer: Payer!
   payee: Payee!
   approved: Boolean!
-  totalAmountPaid: BigInt!
 }
 
 type Payee @entity {
   id: ID!
   approved: Boolean!
-  totalAmountPaid: BigInt!
   gasTank: GasTank!
 }
